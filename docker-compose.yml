@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_USER_IDS=${ADMIN_USER_IDS}
+      - API_BASE_URL=${API_BASE_URL}
+      - HTTP_TIMEOUT=${HTTP_TIMEOUT}
+      - NOTIFICATION_GROUP_ID=${NOTIFICATION_GROUP_ID}
+    networks:
+      - botnet
+networks:
+  botnet:
+    driver: bridge
