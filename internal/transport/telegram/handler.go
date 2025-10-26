@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/config"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/usecase"
@@ -13,10 +15,12 @@ import (
 )
 
 type userFlowState struct {
-	mu   sync.Mutex
-	From string
-	To   string
-	Step int // 0 none, 1 waiting from, 2 waiting to
+	mu    sync.Mutex
+	From  string
+	To    string
+	Step  int // 0 none, 1 waiting from, 2 waiting to
+	Year  int
+	Month int
 }
 
 type Handler struct {
@@ -92,27 +96,6 @@ func (h *Handler) handleMessage(msg *tgbotapi.Message) {
 		return
 	}
 
-	// flow logic
-	switch st.Step {
-	case 1:
-		st.From = text
-		st.Step = 2
-		_ = h.reply(chatID, "Enter end date (YYYY-MM-DD):")
-		return
-	case 2:
-		st.To = text
-		st.Step = 0
-		// call usecase
-		ctx := context.Background()
-		rep, err := h.reportUC.GetReport(ctx, st.From, st.To)
-		if err != nil {
-			_ = h.reply(chatID, fmt.Sprintf("Error: %v", err))
-			return
-		}
-		_ = h.reply(chatID, fmt.Sprintf("Report from %s to %s. Income: %.2f, Expense: %.2f", rep.From, rep.To, rep.Income, rep.Expense))
-		return
-	}
-
 	_ = h.reply(chatID, "Unknown input. Use /start to open menu")
 }
 
@@ -126,29 +109,118 @@ func (h *Handler) handleCallback(q *tgbotapi.CallbackQuery) {
 		return
 	}
 
-	switch data {
-	case "menu:report":
-		// start report flow
-		st := h.getState(userID)
-		st.mu.Lock()
+	st := h.getState(userID)
+	st.mu.Lock()
+	defer st.mu.Unlock()
+
+	if data == "menu:total_profit_loss" {
 		st.Step = 1
 		st.From = ""
 		st.To = ""
-		st.mu.Unlock()
-		_ = h.answerCallback(q, "Enter start date (YYYY-MM-DD):")
-		_ = h.reply(chatID, "Enter start date (YYYY-MM-DD):")
-	default:
-		_ = h.answerCallback(q, "Unknown action")
+		today := time.Now()
+		_ = h.sendCalendar(chatID, 1, today.Year(), today.Month())
+		return
 	}
+
+	if strings.HasPrefix(data, "date:") {
+		parts := strings.Split(data, ":")
+		date := parts[1]
+		step := parts[2]
+
+		if step == "1" {
+			st.From = date
+			st.Step = 2
+			_ = h.answerCallback(q, "Start date selected: "+date)
+			today := time.Now()
+			_ = h.sendCalendar(chatID, 2, today.Year(), today.Month())
+		} else if step == "2" {
+			st.To = date
+			st.Step = 0
+			_ = h.answerCallback(q, "End date selected: "+date)
+
+			ctx := context.Background()
+			rep, err := h.reportUC.GetReport(ctx, st.From, st.To)
+			if err != nil {
+				_ = h.reply(chatID, fmt.Sprintf("error: %v", err))
+				return
+			}
+
+			_ = h.reply(chatID, fmt.Sprintf("Report from %s to %s. Income: %.2f, Expense: %.2f", rep.From, rep.To, rep.Income, rep.Expense))
+		}
+		return
+	}
+
+	if strings.HasPrefix(data, "month:") {
+		parts := strings.Split(data, ":")
+		yearMonth := strings.Split(parts[1], "-")
+		y, err := strconv.Atoi(yearMonth[0])
+		if err != nil {
+			_ = h.reply(chatID, fmt.Sprintf("convert error: %v", err))
+		}
+		m, err := strconv.Atoi(yearMonth[1])
+		if err != nil {
+			_ = h.reply(chatID, fmt.Sprintf("convert error: %v", err))
+		}
+		step := parts[3]
+
+		var newMonth time.Month
+		var newYear int
+		t := time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.UTC)
+		newYear, newMonth = t.Year(), t.Month()
+
+		_ = h.answerCallback(q, "Month changed")
+		i, err := strconv.Atoi(step)
+		if err != nil {
+			_ = h.reply(chatID, fmt.Sprintf("convert error: %v", err))
+		}
+		_ = h.sendCalendar(chatID, i, newYear, newMonth)
+		return
+	}
+
+	_ = h.answerCallback(q, "Unknown action")
 }
 
 func (h *Handler) sendMenu(chatID int64) error {
 	msg := tgbotapi.NewMessage(chatID, "Choose action:")
 	kb := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Get income/expenses", "menu:report"),
+			tgbotapi.NewInlineKeyboardButtonData("Total Profit/Loss %", "menu:total_profit_loss"),
 		),
 	)
+	msg.ReplyMarkup = kb
+	_, err := h.bot.Send(msg)
+	return err
+}
+
+func (h *Handler) sendCalendar(chatID int64, step int, year int, month time.Month) error {
+	daysInMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+
+	var rows [][]tgbotapi.InlineKeyboardButton
+	week := []tgbotapi.InlineKeyboardButton{}
+
+	for d := 1; d <= daysInMonth; d++ {
+		dateStr := fmt.Sprintf("%04d-%02d-%02d", year, month, d)
+		btn := tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%02d", d), fmt.Sprintf("date:%s:%d", dateStr, step))
+		week = append(week, btn)
+		if len(week) == 7 {
+			rows = append(rows, week)
+			week = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+	if len(week) > 0 {
+		rows = append(rows, week)
+	}
+
+	prevMonth := time.Date(year, month-1, 1, 0, 0, 0, 0, time.UTC)
+	nextMonth := time.Date(year, month+1, 1, 0, 0, 0, 0, time.UTC)
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("◀", fmt.Sprintf("month:%d-%d:prev:%d", prevMonth.Year(), prevMonth.Month(), step)),
+		tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s %d", month.String(), year), "noop"),
+		tgbotapi.NewInlineKeyboardButtonData("▶", fmt.Sprintf("month:%d-%d:next:%d", nextMonth.Year(), nextMonth.Month(), step)),
+	))
+
+	kb := tgbotapi.NewInlineKeyboardMarkup(rows...)
+	msg := tgbotapi.NewMessage(chatID, "Select date:")
 	msg.ReplyMarkup = kb
 	_, err := h.bot.Send(msg)
 	return err
