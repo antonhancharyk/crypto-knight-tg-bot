@@ -24,15 +24,13 @@ func main() {
 		cancel()
 	}()
 
-	err := godotenv.Load()
-
-	// GO_ENV := os.Getenv("GO_ENV")
-	// if GO_ENV != "prod" {
-	// err := godotenv.Load()
-	if err != nil {
-		panic(`failed to load env: ` + err.Error())
+	GO_ENV := os.Getenv("GO_ENV")
+	if GO_ENV != "prod" {
+		err := godotenv.Load()
+		if err != nil {
+			panic(`failed to load env: ` + err.Error())
+		}
 	}
-	// }
 
 	cfg, err := config.LoadFromEnv()
 	if err != nil {
