@@ -35,16 +35,26 @@ func (h *Handler) Run(ctx context.Context) error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 30
 	updates := h.bot.GetUpdatesChan(u)
-	for update := range updates {
-		if update.Message != nil {
-			go h.handleMessage(update.Message)
-			continue
-		}
-		if update.CallbackQuery != nil {
-			go h.handleCallback(update.CallbackQuery)
+
+	for {
+		select {
+		case <-ctx.Done():
+			h.bot.StopReceivingUpdates()
+			return nil
+
+		case update, ok := <-updates:
+			if !ok {
+				return nil
+			}
+			if update.Message != nil {
+				go h.handleMessage(update.Message)
+				continue
+			}
+			if update.CallbackQuery != nil {
+				go h.handleCallback(update.CallbackQuery)
+			}
 		}
 	}
-	return nil
 }
 
 func (h *Handler) isAdmin(id int64) bool {
@@ -110,6 +120,7 @@ func (h *Handler) handleCallback(q *tgbotapi.CallbackQuery) {
 	data := q.Data
 	userID := q.From.ID
 	chatID := q.Message.Chat.ID
+
 	if !h.isAdmin(userID) {
 		_ = h.answerCallback(q, "Access denied")
 		return

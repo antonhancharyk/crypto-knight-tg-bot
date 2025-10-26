@@ -1,0 +1,67 @@
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+
+processors:
+  - add_cloud_metadata: ~
+
+
+processors:
+  - add_host_metadata: ~
+  - add_docker_metadata: ~
+  - add_fields:
+      target: ""
+      fields:
+        server_name: "my-server-prod" 
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  username: "elastic"
+  password: "changeme"
+
+output.logstash:
+  hosts: ["elk.your-domain.com:5044"]
+  ssl.verification_mode: none
+
+
+
+
+
+  filebeat.inputs:
+  - type: container
+    paths:
+      - /var/lib/docker/containers/*/*.log
+    json.keys_under_root: true
+    json.add_error_key: true
+    processors:
+      - add_fields:
+          target: ''
+          fields:
+            service: api-service
+
+output.logstash:
+  hosts: ["logstash.example.com:5044"]
+
+
+
+
+
+api-service
+
+filter {
+  if [service] == "api-service" {
+    mutate { add_field => { "[@metadata][index]" => "api-service-logs" } }
+  } else if [service] == "telegram-bot" {
+    mutate { add_field => { "[@metadata][index]" => "telegram-bot-logs" } }
+  } else {
+    mutate { add_field => { "[@metadata][index]" => "unknown-service-logs" } }
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["http://elasticsearch:9200"]
+    index => "%{[@metadata][index]}-%{+YYYY.MM.dd}"
+  }
+}

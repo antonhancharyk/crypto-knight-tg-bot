@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"log"
 
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/config"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/httpclient"
@@ -21,9 +20,8 @@ func NewApp(botAPI *tgbotapi.BotAPI, cfg *config.Config, client *httpclient.Clie
 	return &App{botAPI: botAPI, cfg: cfg, client: client}
 }
 
-func (a *App) Run() error {
+func (a *App) Run(ctx context.Context) error {
 	ruc := usecase.NewReportUsecase(a.client)
 	h := telegram.NewHandler(a.botAPI, a.cfg, ruc)
-	log.Println("tgbot started")
-	return h.Run(context.Background())
+	return h.Run(ctx)
 }

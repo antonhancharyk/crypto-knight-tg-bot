@@ -11,6 +11,18 @@ services:
       - NOTIFICATION_GROUP_ID=${NOTIFICATION_GROUP_ID}
     networks:
       - botnet
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.15.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+    depends_on:
+      - elasticsearch
+
 networks:
   botnet:
     driver: bridge

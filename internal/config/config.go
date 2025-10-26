@@ -21,9 +21,9 @@ func LoadFromEnv() (*Config, error) {
 		return nil, errors.New("BOT_TOKEN required")
 	}
 
-	users := os.Getenv("USER_IDS")
+	users := os.Getenv("ADMIN_USER_IDS")
 	if users == "" {
-		return nil, errors.New("USER_IDS required")
+		return nil, errors.New("ADMIN_USER_IDS required")
 	}
 
 	api := os.Getenv("API_BASE_URL")
