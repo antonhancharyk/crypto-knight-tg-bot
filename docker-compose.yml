@@ -1,12 +1,8 @@
 version: "3.8"
 services:
-  bot:
-    build: .
+  crypto-knight-tgbot:
     container_name: crypto-knight-tgbot
+    image: antgoncharik/crypto-knight-tgbot
+    env_file:
+      - .env
     restart: always
-    environment:
-      - BOT_TOKEN=${BOT_TOKEN}
-      - ADMIN_USER_IDS=${ADMIN_USER_IDS}
-      - API_BASE_URL=${API_BASE_URL}
-      - HTTP_TIMEOUT=${HTTP_TIMEOUT}
-      - NOTIFICATION_GROUP_ID=${NOTIFICATION_GROUP_ID}
