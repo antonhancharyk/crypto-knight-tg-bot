@@ -35,30 +35,38 @@ func NewHandler(bot *tgbotapi.BotAPI, cfg *config.Config, ru *usecase.ReportUsec
 	return &Handler{bot: bot, cfg: cfg, reportUC: ru, states: make(map[int64]*userFlowState)}
 }
 
-func (h *Handler) Run(ctx context.Context) error {
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 30
-	updates := h.bot.GetUpdatesChan(u)
+func (h *Handler) Run(ctx context.Context) {
+	go func() {
+		u := tgbotapi.NewUpdate(0)
+		u.Timeout = 30
+		updates := h.bot.GetUpdatesChan(u)
 
-	for {
-		select {
-		case <-ctx.Done():
-			h.bot.StopReceivingUpdates()
-			return nil
+		for {
+			select {
+			case <-ctx.Done():
+				h.bot.StopReceivingUpdates()
+				return
 
-		case update, ok := <-updates:
-			if !ok {
-				return nil
-			}
-			if update.Message != nil {
-				go h.handleMessage(update.Message)
-				continue
-			}
-			if update.CallbackQuery != nil {
-				go h.handleCallback(update.CallbackQuery)
+			case update, ok := <-updates:
+				if !ok {
+					return
+				}
+				if update.Message != nil {
+					go h.handleMessage(update.Message)
+					continue
+				}
+				if update.CallbackQuery != nil {
+					go h.handleCallback(update.CallbackQuery)
+				}
 			}
 		}
-	}
+	}()
+}
+
+func (h *Handler) SendToGroup(text string) error {
+	msg := tgbotapi.NewMessage(h.cfg.NotificationGroup, text)
+	_, err := h.bot.Send(msg)
+	return err
 }
 
 func (h *Handler) isAdmin(id int64) bool {

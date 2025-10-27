@@ -9,6 +9,7 @@ import (
 
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/app"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/config"
+	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/broker"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/httpclient"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/logging"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -19,10 +20,6 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-quit
-		cancel()
-	}()
 
 	GO_ENV := os.Getenv("GO_ENV")
 	if GO_ENV != "prod" {
@@ -56,9 +53,22 @@ func main() {
 
 	client := httpclient.New(cfg.APIBaseURL, time.Duration(cfg.HTTPTimeoutSeconds)*time.Second)
 
-	appl := app.NewApp(botAPI, cfg, client)
+	rmq, err := broker.NewConnection(cfg.RmqURL)
+	if err != nil {
+		logger.Error("failed to init broker", "error", err)
+		os.Exit(1)
+	}
+	defer rmq.Close()
+
+	logger.Info("broker started")
+
+	appl := app.NewApp(botAPI, cfg, client, rmq)
 	if err := appl.Run(ctx); err != nil {
 		logger.Error("failed to run app", "error", err)
 		os.Exit(1)
 	}
+
+	<-quit
+	logger.Info("graceful shutdown")
+	cancel()
 }

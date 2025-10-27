@@ -13,6 +13,7 @@ type Config struct {
 	NotificationGroup  int64
 	APIBaseURL         string
 	HTTPTimeoutSeconds int
+	RmqURL             string
 }
 
 func LoadFromEnv() (*Config, error) {
@@ -57,11 +58,17 @@ func LoadFromEnv() (*Config, error) {
 		}
 	}
 
+	rmqURL := os.Getenv("RABBITMQ_URL")
+	if rmqURL == "" {
+		return nil, errors.New("RABBITMQ_URL required")
+	}
+
 	return &Config{
 		BotToken:           bot,
 		UserIDs:            res,
 		NotificationGroup:  groupID,
 		APIBaseURL:         api,
 		HTTPTimeoutSeconds: timeout,
+		RmqURL:             rmqURL,
 	}, nil
 }
