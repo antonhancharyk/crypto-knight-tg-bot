@@ -21,19 +21,6 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	GO_ENV := os.Getenv("GO_ENV")
-	if GO_ENV != "prod" {
-		err := godotenv.Load()
-		if err != nil {
-			panic(`failed to load env: ` + err.Error())
-		}
-	}
-
-	cfg, err := config.LoadFromEnv()
-	if err != nil {
-		panic(`failed to init config: ` + err.Error())
-	}
-
 	logger, err := logging.NewZapLogger("prod")
 	if err != nil {
 		panic(`failed to init logger: ` + err.Error())
@@ -41,6 +28,21 @@ func main() {
 	defer func() {
 		_ = logger.Sync()
 	}()
+
+	GO_ENV := os.Getenv("GO_ENV")
+	if GO_ENV != "prod" {
+		err := godotenv.Load()
+		if err != nil {
+			logger.Error("failed to load env", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	cfg, err := config.LoadFromEnv()
+	if err != nil {
+		logger.Error("failed to init config", "error", err)
+		os.Exit(1)
+	}
 
 	botAPI, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
