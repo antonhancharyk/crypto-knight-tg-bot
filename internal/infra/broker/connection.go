@@ -17,11 +17,26 @@ func NewConnection(url string) (*Connection, error) {
 
 	ch, err := conn.Channel()
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 
+	// fair dispatch
+	_ = ch.Qos(1, 0, false)
+
 	return &Connection{conn: conn, channel: ch}, nil
+}
+
+func (c *Connection) DeclareQueue(name string) error {
+	_, err := c.channel.QueueDeclare(
+		name,
+		true,  // durable
+		false, // auto-delete
+		false, // exclusive
+		false, // no-wait
+		nil,   // args
+	)
+	return err
 }
 
 func (c *Connection) Channel() *amqp091.Channel {

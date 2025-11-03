@@ -55,16 +55,16 @@ func main() {
 
 	client := httpclient.New(cfg.APIBaseURL, time.Duration(cfg.HTTPTimeoutSeconds)*time.Second)
 
-	rmq, err := broker.NewConnection(cfg.RmqURL)
+	brokerConn, err := broker.NewConnection(cfg.RmqURL)
 	if err != nil {
 		logger.Error("failed to init broker", "error", err)
 		os.Exit(1)
 	}
-	defer rmq.Close()
+	defer brokerConn.Close()
 
 	logger.Info("broker started")
 
-	appl := app.NewApp(botAPI, cfg, client, rmq)
+	appl := app.NewApp(botAPI, cfg, client, brokerConn)
 	if err := appl.Run(ctx); err != nil {
 		logger.Error("failed to run app", "error", err)
 		os.Exit(1)

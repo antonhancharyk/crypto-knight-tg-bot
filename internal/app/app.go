@@ -26,13 +26,11 @@ func (a *App) Run(ctx context.Context) error {
 	ruc := usecase.NewReportUsecase(a.client)
 	h := telegram.NewHandler(a.botAPI, a.cfg, ruc)
 
-	consumer, err := broker.NewConsumer(a.rmq.Channel(), "tg", func(msg []byte) {
-		h.SendToGroup(string(msg))
+	consumer := broker.NewConsumer(a.rmq.Channel(), "tg", func(msg []byte) error {
+		return h.SendToGroup(string(msg))
 	})
+	err := consumer.Run(ctx)
 	if err != nil {
-		return err
-	}
-	if err := consumer.Run(ctx); err != nil {
 		return err
 	}
 
