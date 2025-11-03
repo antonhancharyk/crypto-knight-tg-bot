@@ -50,7 +50,6 @@ func main() {
 		os.Exit(1)
 	}
 	botAPI.Debug = false
-
 	logger.Info("crypto-knight telegram bot started", "username", botAPI.Self.UserName)
 
 	client := httpclient.New(cfg.APIBaseURL, time.Duration(cfg.HTTPTimeoutSeconds)*time.Second)
@@ -61,8 +60,14 @@ func main() {
 		os.Exit(1)
 	}
 	defer brokerConn.Close()
-
 	logger.Info("broker started")
+
+	err = brokerConn.DeclareQueue("tg")
+	if err != nil {
+		logger.Error("initialization failed", "type", "queue_tg", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("initialized", "type", "queue_tg")
 
 	appl := app.NewApp(botAPI, cfg, client, brokerConn)
 	if err := appl.Run(ctx); err != nil {
