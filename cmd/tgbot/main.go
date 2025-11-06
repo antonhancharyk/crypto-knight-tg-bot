@@ -62,12 +62,19 @@ func main() {
 	defer brokerConn.Close()
 	logger.Info("broker started")
 
-	err = brokerConn.DeclareQueue("tg")
+	err = brokerConn.DeclareQueue("trading-signals-queue")
 	if err != nil {
-		logger.Error("initialization failed", "type", "queue_tg", "error", err)
+		logger.Error("initialization failed", "type", "trading_signals_queue", "error", err)
 		os.Exit(1)
 	}
-	logger.Info("initialized", "type", "queue_tg")
+	logger.Info("initialized", "type", "trading_signals_queue")
+
+	err = brokerConn.DeclareQueue("pnl-reports-queue")
+	if err != nil {
+		logger.Error("initialization failed", "type", "pnl_reports_queue", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("initialized", "type", "pnl_reports_queue")
 
 	appl := app.NewApp(botAPI, cfg, client, brokerConn)
 	if err := appl.Run(ctx); err != nil {

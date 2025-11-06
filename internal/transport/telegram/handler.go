@@ -63,8 +63,8 @@ func (h *Handler) Run(ctx context.Context) {
 	}()
 }
 
-func (h *Handler) SendToGroup(text string) error {
-	msg := tgbotapi.NewMessage(h.cfg.NotificationGroup, text)
+func (h *Handler) SendToGroup(chatID int64, text string) error {
+	msg := tgbotapi.NewMessage(chatID, text)
 	_, err := h.bot.Send(msg)
 	return err
 }

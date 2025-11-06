@@ -26,12 +26,23 @@ func (a *App) Run(ctx context.Context) error {
 	ruc := usecase.NewReportUsecase(a.client)
 	h := telegram.NewHandler(a.botAPI, a.cfg, ruc)
 
-	consumer := broker.NewConsumer(a.rmq.Channel(), "tg", func(msg []byte) error {
-		return h.SendToGroup(string(msg))
-	})
-	err := consumer.Run(ctx)
-	if err != nil {
-		return err
+	consumers := []struct {
+		queue   string
+		handler func([]byte) error
+	}{
+		{"trading-signals-queue", func(msg []byte) error {
+			return h.SendToGroup(-4603798918, string(msg))
+		}},
+		{"pnl-reports-queue", func(msg []byte) error {
+			return h.SendToGroup(-5082938682, string(msg))
+		}},
+	}
+
+	for _, cfg := range consumers {
+		consumer := broker.NewConsumer(a.rmq.Channel(), cfg.queue, cfg.handler)
+		if err := consumer.Run(ctx); err != nil {
+			return err
+		}
 	}
 
 	h.Run(ctx)
