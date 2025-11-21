@@ -36,6 +36,9 @@ func (a *App) Run(ctx context.Context) error {
 		{"pnl-reports-queue", func(msg []byte) error {
 			return h.SendToGroup(-5082938682, string(msg))
 		}},
+		{"system-queue", func(msg []byte) error {
+			return h.SendToGroup(-1003283451332, string(msg))
+		}},
 	}
 
 	for _, cfg := range consumers {
