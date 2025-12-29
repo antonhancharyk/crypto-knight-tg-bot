@@ -76,6 +76,13 @@ func main() {
 	}
 	logger.Info("initialized", "type", "pnl_reports_queue")
 
+	err = brokerConn.DeclareQueue("system-queue")
+	if err != nil {
+		logger.Error("initialization failed", "type", "system_queue", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("initialized", "type", "system_queue")
+
 	appl := app.NewApp(botAPI, cfg, client, brokerConn)
 	if err := appl.Run(ctx); err != nil {
 		logger.Error("failed to run app", "error", err)
