@@ -24,7 +24,7 @@ jobs:
           echo "$HOME/go/bin" >> $GITHUB_PATH
       - name: Lint
         run: |
-          golangci-lint run --out-format=colored-line-number
+          golangci-lint run ./...
       - name: Run tests
         run: go test -v -race -count=1 ./...
       - name: Build
