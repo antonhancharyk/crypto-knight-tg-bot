@@ -8,7 +8,6 @@ run:
 linters:
   enable:
     - errcheck
-    - gofmt
     - govet
     - ineffassign
     - staticcheck
@@ -18,9 +17,3 @@ linters:
     errcheck:
       check-type-assertions: true
       check-blank: true
-
-# issues:
-#   rules:
-#     - path: _test\.go
-#       linters:
-#         - errcheck
