@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/domain"
-	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/httpclient"
+	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/ports"
 )
 
 type ReportUsecase struct {
-	client *httpclient.Client
+	fetcher ports.ReportFetcher
 }
 
-func NewReportUsecase(c *httpclient.Client) *ReportUsecase {
-	return &ReportUsecase{client: c}
+func NewReportUsecase(fetcher ports.ReportFetcher) *ReportUsecase {
+	return &ReportUsecase{fetcher: fetcher}
 }
 
 func (r *ReportUsecase) GetReport(ctx context.Context, from, to string) (*domain.Report, error) {
@@ -24,7 +24,7 @@ func (r *ReportUsecase) GetReport(ctx context.Context, from, to string) (*domain
 	if _, err := time.Parse("2006-01-02", to); err != nil {
 		return nil, fmt.Errorf("invalid to date: %w", err)
 	}
-	resp, err := r.client.FetchReport(ctx, from, to)
+	resp, err := r.fetcher.FetchReport(ctx, from, to)
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,26 @@
+version: "2"
+
+run:
+  timeout: 2m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck
+    - gofmt
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+# issues:
+#   rules:
+#     - path: _test\.go
+#       linters:
+#         - errcheck

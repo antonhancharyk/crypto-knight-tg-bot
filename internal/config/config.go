@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+// QueueConsumer defines a RabbitMQ queue and the Telegram group to forward messages to.
+type QueueConsumer struct {
+	QueueName   string
+	GroupChatID int64
+}
+
 type Config struct {
 	BotToken           string
 	UserIDs            []int64
@@ -14,6 +20,8 @@ type Config struct {
 	APIBaseURL         string
 	HTTPTimeoutSeconds int
 	RmqURL             string
+	// QueueConsumers defines queues to consume and their target group chat IDs.
+	QueueConsumers []QueueConsumer
 }
 
 func LoadFromEnv() (*Config, error) {
@@ -63,6 +71,8 @@ func LoadFromEnv() (*Config, error) {
 		return nil, errors.New("RABBITMQ_URL required")
 	}
 
+	queueConsumers := loadQueueConsumers()
+
 	return &Config{
 		BotToken:           bot,
 		UserIDs:            res,
@@ -70,5 +80,36 @@ func LoadFromEnv() (*Config, error) {
 		APIBaseURL:         api,
 		HTTPTimeoutSeconds: timeout,
 		RmqURL:             rmqURL,
+		QueueConsumers:     queueConsumers,
 	}, nil
+}
+
+// loadQueueConsumers reads queue/group pairs from env with defaults for backward compatibility.
+func loadQueueConsumers() []QueueConsumer {
+	// Optional: CONSUMER_QUEUES="queue1:chatId1,queue2:chatId2" (comma-separated queue:chatId)
+	// If unset, use default queues and env-based group IDs.
+	defaults := []struct {
+		queueEnv, groupEnv string
+		queueDefault       string
+		groupDefault       int64
+	}{
+		{"TRADING_SIGNALS_QUEUE", "TRADING_SIGNALS_GROUP_ID", "trading-signals-queue", -4603798918},
+		{"PNL_REPORTS_QUEUE", "PNL_REPORTS_GROUP_ID", "pnl-reports-queue", -5082938682},
+		{"SYSTEM_QUEUE", "SYSTEM_GROUP_ID", "system-queue", -1003283451332},
+	}
+	out := make([]QueueConsumer, 0, len(defaults))
+	for _, d := range defaults {
+		q := os.Getenv(d.queueEnv)
+		if q == "" {
+			q = d.queueDefault
+		}
+		g := d.groupDefault
+		if s := os.Getenv(d.groupEnv); s != "" {
+			if v, err := strconv.ParseInt(s, 10, 64); err == nil {
+				g = v
+			}
+		}
+		out = append(out, QueueConsumer{QueueName: q, GroupChatID: g})
+	}
+	return out
 }

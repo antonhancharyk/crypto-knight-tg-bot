@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/ports"
 )
 
 type Client struct {
@@ -23,12 +25,13 @@ func New(base string, timeout time.Duration) *Client {
 	}
 }
 
-type ReportResponse struct {
+type reportResponse struct {
 	Income  float64 `json:"income"`
 	Expense float64 `json:"expense"`
 }
 
-func (c *Client) FetchReport(ctx context.Context, from, to string) (*ReportResponse, error) {
+// FetchReport implements ports.ReportFetcher.
+func (c *Client) FetchReport(ctx context.Context, from, to string) (*ports.ReportResult, error) {
 	url := fmt.Sprintf("%s/reports?from=%s&to=%s", c.base, from, to)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -44,10 +47,10 @@ func (c *Client) FetchReport(ctx context.Context, from, to string) (*ReportRespo
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("bad status: %d", resp.StatusCode)
 	}
-	var rr ReportResponse
+	var rr reportResponse
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&rr); err != nil {
 		return nil, err
 	}
-	return &rr, nil
+	return &ports.ReportResult{Income: rr.Income, Expense: rr.Expense}, nil
 }

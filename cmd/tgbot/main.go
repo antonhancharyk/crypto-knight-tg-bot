@@ -84,12 +84,23 @@ func main() {
 	logger.Info("initialized", "type", "system_queue")
 
 	appl := app.NewApp(botAPI, cfg, client, brokerConn)
-	if err := appl.Run(ctx); err != nil {
-		logger.Error("failed to run app", "error", err)
-		os.Exit(1)
-	}
 
-	<-quit
-	logger.Info("graceful shutdown")
-	cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- appl.Run(ctx)
+	}()
+
+	select {
+	case <-quit:
+		logger.Info("graceful shutdown")
+		cancel()
+		if err := <-done; err != nil && err != context.Canceled {
+			logger.Error("app exit error", "error", err)
+		}
+	case err := <-done:
+		if err != nil {
+			logger.Error("app failed", "error", err)
+			os.Exit(1)
+		}
+	}
 }
