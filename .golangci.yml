@@ -1,19 +1,45 @@
 version: "2"
 
 run:
-  timeout: 2m
+  timeout: 5m
   tests: true
   modules-download-mode: readonly
+  allow-parallel-runners: true
 
 linters:
   enable:
     - errcheck
     - govet
-    - ineffassign
     - staticcheck
+    - ineffassign
     - unused
-
+    - gosimple
+    - bodyclose
+    - contextcheck
+    - revive
+    - gocritic
+    - prealloc
+    - gofmt
+    - goimports
+    - errorlint
+    - nilerr
+    - asciicheck
+    - bidichk
+    - nestif
+    - whitespace
+    - wrapcheck
+    - copyloopvar
+    - gosec
+  # - makezero
   settings:
     errcheck:
       check-type-assertions: true
       check-blank: true
+
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 3
+  new: false
+  fix: false
+  uniq-by-line: true
+  whole-files: false
