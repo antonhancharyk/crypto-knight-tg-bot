@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build \
         -trimpath \
         -ldflags="-s -w -buildid=" \
-        -o app ./cmd/tgbot/main.go
+        -o app ./cmd/tgbot
 # ---------------- RUNTIME STAGE ----------------
 FROM alpine:3.23.3
 RUN apk add --no-cache tini ca-certificates curl
@@ -22,5 +22,4 @@ RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=builder --chown=app:app /src/app .
 USER app
-EXPOSE 8080
 ENTRYPOINT ["/sbin/tini", "--", "/app/app"]
