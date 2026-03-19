@@ -13,14 +13,11 @@ linters:
     - staticcheck
     - ineffassign
     - unused
-    - gosimple
     - bodyclose
     - contextcheck
     - revive
     - gocritic
     - prealloc
-    - gofmt
-    - goimports
     - errorlint
     - nilerr
     - asciicheck
@@ -30,7 +27,6 @@ linters:
     - wrapcheck
     - copyloopvar
     - gosec
-  # - makezero
   settings:
     errcheck:
       check-type-assertions: true
