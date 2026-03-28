@@ -17,9 +17,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         -o app ./cmd/tgbot
 # ---------------- RUNTIME STAGE ----------------
 FROM alpine:3.23.3
-RUN apk add --no-cache tini ca-certificates curl
+RUN apk add --no-cache tini ca-certificates procps
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=builder --chown=app:app /src/app .
+HEALTHCHECK CMD pgrep app || exit 1
 USER app
 ENTRYPOINT ["/sbin/tini", "--", "/app/app"]

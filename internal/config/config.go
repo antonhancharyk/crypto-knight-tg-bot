@@ -19,6 +19,7 @@ type Config struct {
 	APIBaseURL         string
 	HTTPTimeoutSeconds int
 	RmqURL             string
+	HealthListenAddr   string
 	QueueConsumers     []QueueConsumer
 }
 
@@ -69,6 +70,11 @@ func LoadFromEnv() (*Config, error) {
 		return nil, errors.New("RABBITMQ_URL required")
 	}
 
+	healthAddr := os.Getenv("HEALTH_LISTEN_ADDR")
+	if healthAddr == "" {
+		healthAddr = ":8080"
+	}
+
 	queueConsumers := loadQueueConsumers()
 
 	return &Config{
@@ -78,6 +84,7 @@ func LoadFromEnv() (*Config, error) {
 		APIBaseURL:         api,
 		HTTPTimeoutSeconds: timeout,
 		RmqURL:             rmqURL,
+		HealthListenAddr:   healthAddr,
 		QueueConsumers:     queueConsumers,
 	}, nil
 }

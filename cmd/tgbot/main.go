@@ -12,6 +12,7 @@ import (
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/app"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/config"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/broker"
+	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/health"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/httpclient"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/logging"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -96,6 +97,8 @@ func run() int {
 	}
 	logger.Info("initialized", "type", SystemQueue)
 
+	logger.Info("health server listening", "addr", cfg.HealthListenAddr)
+
 	appl := app.NewApp(botAPI, cfg, client, brokerConn)
 
 	done := make(chan error, 1)
@@ -103,19 +106,46 @@ func run() int {
 		done <- appl.Run(ctx)
 	}()
 
-	select {
-	case <-quit:
-		logger.Info("graceful shutdown")
-		cancel()
-		if err := <-done; err != nil && !errors.Is(err, context.Canceled) {
-			logger.Error("app exit error", "error", err)
+	type healthResult struct {
+		err error
+	}
+	healthCh := make(chan healthResult, 1)
+	go func() {
+		healthCh <- healthResult{err: health.Serve(ctx, cfg.HealthListenAddr)}
+	}()
+
+	for {
+		select {
+		case <-quit:
+			logger.Info("graceful shutdown")
+			cancel()
+			if err := <-done; err != nil && !errors.Is(err, context.Canceled) {
+				logger.Error("app exit error", "error", err)
+			}
+			if hr := <-healthCh; hr.err != nil {
+				logger.Error("health server exit error", "error", hr.err)
+			}
+			return 0
+		case hr := <-healthCh:
+			if hr.err != nil {
+				logger.Error("health server failed", "error", hr.err)
+				cancel()
+				if appErr := <-done; appErr != nil && !errors.Is(appErr, context.Canceled) {
+					logger.Error("app exit error", "error", appErr)
+				}
+				return 1
+			}
+			continue
+		case err := <-done:
+			cancel()
+			if hr := <-healthCh; hr.err != nil {
+				logger.Error("health server exit error", "error", hr.err)
+			}
+			if err != nil && !errors.Is(err, context.Canceled) {
+				logger.Error("app failed", "error", err)
+				return 1
+			}
+			return 0
 		}
-		return 0
-	case err := <-done:
-		if err != nil {
-			logger.Error("app failed", "error", err)
-			return 1
-		}
-		return 0
 	}
 }
