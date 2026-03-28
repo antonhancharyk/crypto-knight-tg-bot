@@ -9,7 +9,7 @@ Telegram bot for interacting with the **Crypto Knight trading core**, providing 
 ![CI](https://github.com/antonhancharyk/crypto-knight-tg-bot/actions/workflows/ci.yml/badge.svg)
 [![Codecov](https://codecov.io/gh/antonhancharyk/crypto-knight-tg-bot/branch/main/graph/badge.svg)](https://app.codecov.io/gh/antonhancharyk/crypto-knight-tg-bot)
 [![Go Report Card](https://goreportcard.com/badge/github.com/antonhancharyk/crypto-knight-tg-bot)](https://goreportcard.com/report/github.com/antonhancharyk/crypto-knight-tg-bot)
-![Docker](https://img.shields.io/docker/build/antonhancharyk/crypto-knight-tg-bot)
+![Docker](https://img.shields.io/docker/build/antgoncharik/crypto-knight-tgbot)
 ![Go](https://img.shields.io/badge/go-1.26-blue)
 ![Release](https://img.shields.io/github/v/release/antonhancharyk/crypto-knight-tg-bot)
 
