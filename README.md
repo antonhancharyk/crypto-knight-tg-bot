@@ -2,6 +2,13 @@
 
 Telegram bot for managing and receiving information from the crypto-knight trading core.
 
+## Coverage
+
+![CI](https://github.com/antonhancharyk/crypto-knight-tg-bot/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/antonhancharyk/crypto-knight-tg-bot/branch/main/graph/badge.svg)](https://app.codecov.io/gh/antonhancharyk/crypto-knight-tg-bot)
+[![Go Report Card](https://goreportcard.com/badge/github.com/antonhancharyk/crypto-knight-tg-bot)](https://goreportcard.com/report/github.com/antonhancharyk/crypto-knight-tg-bot)
+
+
 ## Architecture
 
 The project follows **clean/hexagonal** layout:

@@ -47,12 +47,19 @@ jobs:
               -shuffle=on \
               -covermode=atomic \
               -coverpkg=./... \
-              -coverprofile=coverage.out \
+              -coverprofile=coverage.txt \
               ./...
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
+      - name: Show coverage in logs
+        run: go tool cover -func=coverage.txt
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.txt
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
+          verbose: true
 
   build:
     runs-on: ubuntu-latest
