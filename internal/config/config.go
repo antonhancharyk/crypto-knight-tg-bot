@@ -1,3 +1,4 @@
+// Package config loads application settings from the environment.
 package config
 
 import (
@@ -7,11 +8,13 @@ import (
 	"strings"
 )
 
+// QueueConsumer binds a RabbitMQ queue name to a target Telegram group chat ID.
 type QueueConsumer struct {
 	QueueName   string
 	GroupChatID int64
 }
 
+// Config holds runtime configuration for the bot process.
 type Config struct {
 	BotToken           string
 	UserIDs            []int64
@@ -23,6 +26,7 @@ type Config struct {
 	QueueConsumers     []QueueConsumer
 }
 
+// LoadFromEnv reads configuration from process environment variables.
 func LoadFromEnv() (*Config, error) {
 	bot := os.Getenv("BOT_TOKEN")
 	if bot == "" {

@@ -1,3 +1,4 @@
+// Package httpclient implements ports.ReportFetcher over HTTP JSON APIs.
 package httpclient
 
 import (
@@ -10,11 +11,13 @@ import (
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/ports"
 )
 
+// Client fetches reports from a remote HTTP service.
 type Client struct {
 	base string
 	http *http.Client
 }
 
+// New returns a Client for base URL with the given per-request timeout.
 func New(base string, timeout time.Duration) *Client {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
@@ -30,6 +33,7 @@ type reportResponse struct {
 	Expense float64 `json:"expense"`
 }
 
+// FetchReport implements ports.ReportFetcher.
 func (c *Client) FetchReport(ctx context.Context, from, to string) (*ports.ReportResult, error) {
 	url := fmt.Sprintf("%s/reports?from=%s&to=%s", c.base, from, to)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

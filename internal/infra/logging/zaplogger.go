@@ -1,3 +1,4 @@
+// Package logging provides a Zap-backed implementation of ports.Logger.
 package logging
 
 import (
@@ -7,10 +8,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// ZapLogger implements ports.Logger using zap's sugared logger.
 type ZapLogger struct {
 	sugar *zap.SugaredLogger
 }
 
+// NewZapLogger builds a logger using production or development zap config from env.
 func NewZapLogger(env string) (ports.Logger, error) {
 	var cfg zap.Config
 	if env == "prod" {
@@ -27,6 +30,7 @@ func NewZapLogger(env string) (ports.Logger, error) {
 	return &ZapLogger{sugar: logger.Sugar()}, nil
 }
 
+// Sync flushes any buffered log entries.
 func (l *ZapLogger) Sync() error {
 	if err := l.sugar.Sync(); err != nil {
 		return fmt.Errorf("zap sync: %w", err)
@@ -34,14 +38,17 @@ func (l *ZapLogger) Sync() error {
 	return nil
 }
 
+// Info logs at info level with optional structured fields.
 func (l *ZapLogger) Info(msg string, keysAndValues ...any) {
 	l.sugar.Infow(msg, keysAndValues...)
 }
 
+// Error logs at error level with optional structured fields.
 func (l *ZapLogger) Error(msg string, keysAndValues ...any) {
 	l.sugar.Errorw(msg, keysAndValues...)
 }
 
+// Debug logs at debug level with optional structured fields.
 func (l *ZapLogger) Debug(msg string, keysAndValues ...any) {
 	l.sugar.Debugw(msg, keysAndValues...)
 }

@@ -1,3 +1,4 @@
+// Package health exposes a minimal HTTP listener for liveness probes (e.g. Docker HEALTHCHECK).
 package health
 
 import (
@@ -8,6 +9,7 @@ import (
 	"time"
 )
 
+// Serve listens on addr and serves GET /healthz with 200 until ctx is canceled.
 func Serve(ctx context.Context, addr string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {

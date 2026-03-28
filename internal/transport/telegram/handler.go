@@ -1,3 +1,4 @@
+// Package telegram implements the Telegram Bot API transport and admin flows.
 package telegram
 
 import (
@@ -23,6 +24,7 @@ type userFlowState struct {
 	Month int
 }
 
+// Handler processes Telegram updates and forwards queue messages to group chats.
 type Handler struct {
 	bot      *tgbotapi.BotAPI
 	cfg      *config.Config
@@ -31,10 +33,12 @@ type Handler struct {
 	statesMu sync.Mutex
 }
 
+// NewHandler constructs a Handler for the given bot, config, and report use case.
 func NewHandler(bot *tgbotapi.BotAPI, cfg *config.Config, ru *usecase.ReportUsecase) *Handler {
 	return &Handler{bot: bot, cfg: cfg, reportUC: ru, states: make(map[int64]*userFlowState)}
 }
 
+// Run starts long-polling for updates in a background goroutine.
 func (h *Handler) Run(ctx context.Context) {
 	go func() {
 		u := tgbotapi.NewUpdate(0)
@@ -63,6 +67,7 @@ func (h *Handler) Run(ctx context.Context) {
 	}()
 }
 
+// SendToGroup sends a plain text message to a chat or group.
 func (h *Handler) SendToGroup(chatID int64, text string) error {
 	msg := tgbotapi.NewMessage(chatID, text)
 	_, err := h.bot.Send(msg)

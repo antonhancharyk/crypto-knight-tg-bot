@@ -1,3 +1,4 @@
+// Command tgbot runs the Telegram bot, RabbitMQ consumers, and HTTP /healthz for probes.
 package main
 
 import (

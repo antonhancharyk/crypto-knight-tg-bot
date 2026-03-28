@@ -1,3 +1,4 @@
+// Package app composes Telegram transport, RabbitMQ consumers, and report fetching into one runnable unit.
 package app
 
 import (
@@ -12,6 +13,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// App wires the bot API, configuration, report fetcher, and broker connection.
 type App struct {
 	botAPI  *tgbotapi.BotAPI
 	cfg     *config.Config
@@ -19,10 +21,12 @@ type App struct {
 	rmq     *broker.Connection
 }
 
+// NewApp constructs an App from its dependencies.
 func NewApp(botAPI *tgbotapi.BotAPI, cfg *config.Config, fetcher ports.ReportFetcher, rmq *broker.Connection) *App {
 	return &App{botAPI: botAPI, cfg: cfg, fetcher: fetcher, rmq: rmq}
 }
 
+// Run starts queue consumers and the Telegram update loop; it blocks until ctx is canceled.
 func (a *App) Run(ctx context.Context) error {
 	ruc := usecase.NewReportUsecase(a.fetcher)
 	h := telegram.NewHandler(a.botAPI, a.cfg, ruc)

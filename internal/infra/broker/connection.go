@@ -1,3 +1,4 @@
+// Package broker provides RabbitMQ connection helpers.
 package broker
 
 import (
@@ -6,11 +7,13 @@ import (
 	"github.com/rabbitmq/amqp091-go"
 )
 
+// Connection wraps an AMQP connection and a single channel with prefetch QoS.
 type Connection struct {
 	conn    *amqp091.Connection
 	channel *amqp091.Channel
 }
 
+// NewConnection dials RabbitMQ and opens a channel configured for fair dispatch.
 func NewConnection(url string) (*Connection, error) {
 	conn, err := amqp091.Dial(url)
 	if err != nil {
@@ -32,6 +35,7 @@ func NewConnection(url string) (*Connection, error) {
 	return &Connection{conn: conn, channel: ch}, nil
 }
 
+// DeclareQueue declares a durable queue on the broker channel.
 func (c *Connection) DeclareQueue(name string) error {
 	_, err := c.channel.QueueDeclare(
 		name,
@@ -47,10 +51,12 @@ func (c *Connection) DeclareQueue(name string) error {
 	return nil
 }
 
+// Channel returns the underlying AMQP channel used for consume/publish.
 func (c *Connection) Channel() *amqp091.Channel {
 	return c.channel
 }
 
+// Close closes the channel and connection (best effort).
 func (c *Connection) Close() {
 	if c.channel != nil {
 		_ = c.channel.Close() //nolint:errcheck // best-effort shutdown
