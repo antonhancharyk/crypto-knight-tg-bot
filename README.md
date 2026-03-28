@@ -45,4 +45,4 @@ make build
 
 ## Deployment
 
-Docker image is built and pushed on push to `main`; see `.github/workflows/deploy.yml`. The workflow runs tests and vet before building the image.
+Docker image is built and pushed on push to `main`; see `.github/workflows/ci.yml`. The workflow runs tests and vet before building the image.

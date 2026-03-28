@@ -26,7 +26,7 @@ func (r *ReportUsecase) GetReport(ctx context.Context, from, to string) (*domain
 	}
 	resp, err := r.fetcher.FetchReport(ctx, from, to)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetch report: %w", err)
 	}
 	return &domain.Report{From: from, To: to, Income: resp.Income, Expense: resp.Expense}, nil
 }

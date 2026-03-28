@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"fmt"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -29,7 +30,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 		nil,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("amqp consume %q: %w", c.queue, err)
 	}
 
 	go func() {
@@ -43,11 +44,11 @@ func (c *Consumer) Run(ctx context.Context) error {
 				}
 
 				if err := c.handler(m.Body); err != nil {
-					_ = m.Nack(false, true)
+					_ = m.Nack(false, true) //nolint:errcheck // broker will redeliver
 					continue
 				}
 
-				_ = m.Ack(false)
+				_ = m.Ack(false) //nolint:errcheck // ack after successful handler
 			}
 		}
 	}()

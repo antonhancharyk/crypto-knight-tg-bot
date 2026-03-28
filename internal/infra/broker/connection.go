@@ -1,6 +1,8 @@
 package broker
 
 import (
+	"fmt"
+
 	"github.com/rabbitmq/amqp091-go"
 )
 
@@ -12,17 +14,20 @@ type Connection struct {
 func NewConnection(url string) (*Connection, error) {
 	conn, err := amqp091.Dial(url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("amqp dial: %w", err)
 	}
 
 	ch, err := conn.Channel()
 	if err != nil {
-		_ = conn.Close()
-		return nil, err
+		_ = conn.Close() //nolint:errcheck // rollback after failed channel
+		return nil, fmt.Errorf("amqp channel: %w", err)
 	}
 
-	// fair dispatch
-	_ = ch.Qos(1, 0, false)
+	if err := ch.Qos(1, 0, false); err != nil {
+		_ = ch.Close()   //nolint:errcheck // rollback after qos failure
+		_ = conn.Close() //nolint:errcheck
+		return nil, fmt.Errorf("amqp qos: %w", err)
+	}
 
 	return &Connection{conn: conn, channel: ch}, nil
 }
@@ -36,7 +41,10 @@ func (c *Connection) DeclareQueue(name string) error {
 		false, // no-wait
 		nil,   // args
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("queue declare %q: %w", name, err)
+	}
+	return nil
 }
 
 func (c *Connection) Channel() *amqp091.Channel {
@@ -45,9 +53,9 @@ func (c *Connection) Channel() *amqp091.Channel {
 
 func (c *Connection) Close() {
 	if c.channel != nil {
-		_ = c.channel.Close()
+		_ = c.channel.Close() //nolint:errcheck // best-effort shutdown
 	}
 	if c.conn != nil {
-		_ = c.conn.Close()
+		_ = c.conn.Close() //nolint:errcheck // best-effort shutdown
 	}
 }

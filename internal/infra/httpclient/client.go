@@ -30,19 +30,22 @@ type reportResponse struct {
 	Expense float64 `json:"expense"`
 }
 
-// FetchReport implements ports.ReportFetcher.
 func (c *Client) FetchReport(ctx context.Context, from, to string) (*ports.ReportResult, error) {
 	url := fmt.Sprintf("%s/reports?from=%s&to=%s", c.base, from, to)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build request: %w", err)
 	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("http get: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			return
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("bad status: %d", resp.StatusCode)
@@ -50,7 +53,7 @@ func (c *Client) FetchReport(ctx context.Context, from, to string) (*ports.Repor
 	var rr reportResponse
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&rr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode report json: %w", err)
 	}
 	return &ports.ReportResult{Income: rr.Income, Expense: rr.Expense}, nil
 }

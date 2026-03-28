@@ -52,11 +52,11 @@ func (h *Handler) Run(ctx context.Context) {
 					return
 				}
 				if update.Message != nil {
-					go h.handleMessage(update.Message)
+					go h.handleMessage(ctx, update.Message)
 					continue
 				}
 				if update.CallbackQuery != nil {
-					go h.handleCallback(update.CallbackQuery)
+					go h.handleCallback(ctx, update.CallbackQuery)
 				}
 			}
 		}
@@ -66,7 +66,36 @@ func (h *Handler) Run(ctx context.Context) {
 func (h *Handler) SendToGroup(chatID int64, text string) error {
 	msg := tgbotapi.NewMessage(chatID, text)
 	_, err := h.bot.Send(msg)
-	return err
+	if err != nil {
+		return fmt.Errorf("telegram send to group: %w", err)
+	}
+	return nil
+}
+
+func (h *Handler) replyBestEffort(chatID int64, text string) {
+	msg := tgbotapi.NewMessage(chatID, text)
+	if _, err := h.bot.Send(msg); err != nil {
+		return
+	}
+}
+
+func (h *Handler) answerCallbackBestEffort(q *tgbotapi.CallbackQuery, text string) {
+	cfg := tgbotapi.NewCallback(q.ID, text)
+	if _, err := h.bot.Request(cfg); err != nil {
+		return
+	}
+}
+
+func (h *Handler) sendMenuBestEffort(chatID int64) {
+	if err := h.sendMenu(chatID); err != nil {
+		return
+	}
+}
+
+func (h *Handler) sendCalendarBestEffort(chatID int64, step int, year int, month time.Month) {
+	if err := h.sendCalendar(chatID, step, year, month); err != nil {
+		return
+	}
 }
 
 func (h *Handler) isAdmin(id int64) bool {
@@ -84,12 +113,12 @@ func (h *Handler) getState(userID int64) *userFlowState {
 	return st
 }
 
-func (h *Handler) handleMessage(msg *tgbotapi.Message) {
+func (h *Handler) handleMessage(_ context.Context, msg *tgbotapi.Message) {
 	userID := msg.From.ID
 	chatID := msg.Chat.ID
 
 	if !h.isAdmin(userID) {
-		_ = h.reply(chatID, "Access denied")
+		h.replyBestEffort(chatID, "Access denied")
 		return
 	}
 
@@ -99,21 +128,21 @@ func (h *Handler) handleMessage(msg *tgbotapi.Message) {
 	defer st.mu.Unlock()
 
 	if text == "/start" {
-		h.sendMenu(chatID)
+		h.sendMenuBestEffort(chatID)
 		st.Step = 0
 		return
 	}
 
-	_ = h.reply(chatID, "Unknown input. Use /start to open menu")
+	h.replyBestEffort(chatID, "Unknown input. Use /start to open menu")
 }
 
-func (h *Handler) handleCallback(q *tgbotapi.CallbackQuery) {
+func (h *Handler) handleCallback(ctx context.Context, q *tgbotapi.CallbackQuery) {
 	data := q.Data
 	userID := q.From.ID
 	chatID := q.Message.Chat.ID
 
 	if !h.isAdmin(userID) {
-		_ = h.answerCallback(q, "Access denied")
+		h.answerCallbackBestEffort(q, "Access denied")
 		return
 	}
 
@@ -126,7 +155,7 @@ func (h *Handler) handleCallback(q *tgbotapi.CallbackQuery) {
 		st.From = ""
 		st.To = ""
 		today := time.Now()
-		_ = h.sendCalendar(chatID, 1, today.Year(), today.Month())
+		h.sendCalendarBestEffort(chatID, 1, today.Year(), today.Month())
 		return
 	}
 
@@ -135,25 +164,25 @@ func (h *Handler) handleCallback(q *tgbotapi.CallbackQuery) {
 		date := parts[1]
 		step := parts[2]
 
-		if step == "1" {
+		switch step {
+		case "1":
 			st.From = date
 			st.Step = 2
-			_ = h.answerCallback(q, "Start date selected: "+date)
+			h.answerCallbackBestEffort(q, "Start date selected: "+date)
 			today := time.Now()
-			_ = h.sendCalendar(chatID, 2, today.Year(), today.Month())
-		} else if step == "2" {
+			h.sendCalendarBestEffort(chatID, 2, today.Year(), today.Month())
+		case "2":
 			st.To = date
 			st.Step = 0
-			_ = h.answerCallback(q, "End date selected: "+date)
+			h.answerCallbackBestEffort(q, "End date selected: "+date)
 
-			ctx := context.Background()
 			rep, err := h.reportUC.GetReport(ctx, st.From, st.To)
 			if err != nil {
-				_ = h.reply(chatID, fmt.Sprintf("error: %v", err))
+				h.replyBestEffort(chatID, fmt.Sprintf("error: %v", err))
 				return
 			}
 
-			_ = h.reply(chatID, fmt.Sprintf("Report from %s to %s. Income: %.2f, Expense: %.2f", rep.From, rep.To, rep.Income, rep.Expense))
+			h.replyBestEffort(chatID, fmt.Sprintf("Report from %s to %s. Income: %.2f, Expense: %.2f", rep.From, rep.To, rep.Income, rep.Expense))
 		}
 		return
 	}
@@ -163,11 +192,11 @@ func (h *Handler) handleCallback(q *tgbotapi.CallbackQuery) {
 		yearMonth := strings.Split(parts[1], "-")
 		y, err := strconv.Atoi(yearMonth[0])
 		if err != nil {
-			_ = h.reply(chatID, fmt.Sprintf("convert error: %v", err))
+			h.replyBestEffort(chatID, fmt.Sprintf("convert error: %v", err))
 		}
 		m, err := strconv.Atoi(yearMonth[1])
 		if err != nil {
-			_ = h.reply(chatID, fmt.Sprintf("convert error: %v", err))
+			h.replyBestEffort(chatID, fmt.Sprintf("convert error: %v", err))
 		}
 		step := parts[3]
 
@@ -176,16 +205,16 @@ func (h *Handler) handleCallback(q *tgbotapi.CallbackQuery) {
 		t := time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.UTC)
 		newYear, newMonth = t.Year(), t.Month()
 
-		_ = h.answerCallback(q, "Month changed")
+		h.answerCallbackBestEffort(q, "Month changed")
 		i, err := strconv.Atoi(step)
 		if err != nil {
-			_ = h.reply(chatID, fmt.Sprintf("convert error: %v", err))
+			h.replyBestEffort(chatID, fmt.Sprintf("convert error: %v", err))
 		}
-		_ = h.sendCalendar(chatID, i, newYear, newMonth)
+		h.sendCalendarBestEffort(chatID, i, newYear, newMonth)
 		return
 	}
 
-	_ = h.answerCallback(q, "Unknown action")
+	h.answerCallbackBestEffort(q, "Unknown action")
 }
 
 func (h *Handler) sendMenu(chatID int64) error {
@@ -197,7 +226,10 @@ func (h *Handler) sendMenu(chatID int64) error {
 	)
 	msg.ReplyMarkup = kb
 	_, err := h.bot.Send(msg)
-	return err
+	if err != nil {
+		return fmt.Errorf("telegram send menu: %w", err)
+	}
+	return nil
 }
 
 func (h *Handler) sendCalendar(chatID int64, step int, year int, month time.Month) error {
@@ -231,17 +263,8 @@ func (h *Handler) sendCalendar(chatID int64, step int, year int, month time.Mont
 	msg := tgbotapi.NewMessage(chatID, "Select date:")
 	msg.ReplyMarkup = kb
 	_, err := h.bot.Send(msg)
-	return err
-}
-
-func (h *Handler) reply(chatID int64, text string) error {
-	msg := tgbotapi.NewMessage(chatID, text)
-	_, err := h.bot.Send(msg)
-	return err
-}
-
-func (h *Handler) answerCallback(q *tgbotapi.CallbackQuery, text string) error {
-	cfg := tgbotapi.NewCallback(q.ID, text)
-	_, err := h.bot.Request(cfg)
-	return err
+	if err != nil {
+		return fmt.Errorf("telegram send calendar: %w", err)
+	}
+	return nil
 }

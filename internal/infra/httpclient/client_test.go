@@ -18,7 +18,7 @@ func TestClient_FetchReport(t *testing.T) {
 			require.Equal(t, "2020-01-01", r.URL.Query().Get("from"))
 			require.Equal(t, "2020-01-31", r.URL.Query().Get("to"))
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]float64{"income": 100.5, "expense": 50.25})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]float64{"income": 100.5, "expense": 50.25}))
 		}))
 		defer server.Close()
 
@@ -46,7 +46,8 @@ func TestClient_FetchReport(t *testing.T) {
 	t.Run("invalid JSON", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("not json"))
+			_, err := w.Write([]byte("not json"))
+			require.NoError(t, err)
 		}))
 		defer server.Close()
 

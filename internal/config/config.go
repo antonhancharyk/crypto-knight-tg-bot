@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// QueueConsumer defines a RabbitMQ queue and the Telegram group to forward messages to.
 type QueueConsumer struct {
 	QueueName   string
 	GroupChatID int64
@@ -20,8 +19,7 @@ type Config struct {
 	APIBaseURL         string
 	HTTPTimeoutSeconds int
 	RmqURL             string
-	// QueueConsumers defines queues to consume and their target group chat IDs.
-	QueueConsumers []QueueConsumer
+	QueueConsumers     []QueueConsumer
 }
 
 func LoadFromEnv() (*Config, error) {
@@ -47,7 +45,7 @@ func LoadFromEnv() (*Config, error) {
 		}
 	}
 
-	var groupID int64 = 0
+	var groupID int64
 	if g := os.Getenv("NOTIFICATION_GROUP_ID"); g != "" {
 		if v, err := strconv.ParseInt(g, 10, 64); err == nil {
 			groupID = v
@@ -84,10 +82,7 @@ func LoadFromEnv() (*Config, error) {
 	}, nil
 }
 
-// loadQueueConsumers reads queue/group pairs from env with defaults for backward compatibility.
 func loadQueueConsumers() []QueueConsumer {
-	// Optional: CONSUMER_QUEUES="queue1:chatId1,queue2:chatId2" (comma-separated queue:chatId)
-	// If unset, use default queues and env-based group IDs.
 	defaults := []struct {
 		queueEnv, groupEnv string
 		queueDefault       string

@@ -1,6 +1,8 @@
 package logging
 
 import (
+	"fmt"
+
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/ports"
 	"go.uber.org/zap"
 )
@@ -19,14 +21,17 @@ func NewZapLogger(env string) (ports.Logger, error) {
 
 	logger, err := cfg.Build()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("zap build: %w", err)
 	}
 
 	return &ZapLogger{sugar: logger.Sugar()}, nil
 }
 
 func (l *ZapLogger) Sync() error {
-	return l.sugar.Sync()
+	if err := l.sugar.Sync(); err != nil {
+		return fmt.Errorf("zap sync: %w", err)
+	}
+	return nil
 }
 
 func (l *ZapLogger) Info(msg string, keysAndValues ...any) {

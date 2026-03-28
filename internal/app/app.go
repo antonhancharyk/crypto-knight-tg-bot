@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/config"
 	"github.com/antonhancharyk/crypto-knight-tg-bot/internal/infra/broker"
@@ -32,12 +33,12 @@ func (a *App) Run(ctx context.Context) error {
 			return h.SendToGroup(chatID, string(msg))
 		})
 		if err := consumer.Run(ctx); err != nil {
-			return err
+			return fmt.Errorf("consumer %q: %w", qc.QueueName, err)
 		}
 	}
 
 	h.Run(ctx)
 
 	<-ctx.Done()
-	return ctx.Err()
+	return fmt.Errorf("context ended: %w", ctx.Err())
 }

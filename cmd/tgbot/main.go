@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,38 +18,49 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+	TradingSignalsQueue = "trading-signals-queue"
+	PnlReportsQueue     = "pnl-reports-queue"
+	SystemQueue         = "system-queue"
+)
+
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	logger, err := logging.NewZapLogger("prod")
 	if err != nil {
-		panic(`failed to init logger: ` + err.Error())
+		fmt.Fprintf(os.Stderr, "failed to init logger: %v\n", err)
+		return 1
 	}
 	defer func() {
-		_ = logger.Sync()
+		_ = logger.Sync() //nolint:errcheck // zap sync may fail on stdout
 	}()
 
-	GO_ENV := os.Getenv("GO_ENV")
-	if GO_ENV != "prod" {
-		err := godotenv.Load()
-		if err != nil {
+	goEnv := os.Getenv("GO_ENV")
+	if goEnv != "prod" {
+		if err := godotenv.Load(); err != nil {
 			logger.Error("failed to load env", "error", err)
-			os.Exit(1)
+			return 1
 		}
 	}
 
 	cfg, err := config.LoadFromEnv()
 	if err != nil {
 		logger.Error("failed to init config", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
 	botAPI, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		logger.Error("failed to init crypto-knight telegram bot", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	botAPI.Debug = false
 	logger.Info("crypto-knight telegram bot started", "username", botAPI.Self.UserName)
@@ -57,31 +70,31 @@ func main() {
 	brokerConn, err := broker.NewConnection(cfg.RmqURL)
 	if err != nil {
 		logger.Error("failed to init broker", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	defer brokerConn.Close()
 	logger.Info("broker started")
 
-	err = brokerConn.DeclareQueue("trading-signals-queue")
+	err = brokerConn.DeclareQueue(TradingSignalsQueue)
 	if err != nil {
-		logger.Error("initialization failed", "type", "trading_signals_queue", "error", err)
-		os.Exit(1)
+		logger.Error("initialization failed", "type", TradingSignalsQueue, "error", err)
+		return 1
 	}
-	logger.Info("initialized", "type", "trading_signals_queue")
+	logger.Info("initialized", "type", TradingSignalsQueue)
 
-	err = brokerConn.DeclareQueue("pnl-reports-queue")
+	err = brokerConn.DeclareQueue(PnlReportsQueue)
 	if err != nil {
-		logger.Error("initialization failed", "type", "pnl_reports_queue", "error", err)
-		os.Exit(1)
+		logger.Error("initialization failed", "type", PnlReportsQueue, "error", err)
+		return 1
 	}
-	logger.Info("initialized", "type", "pnl_reports_queue")
+	logger.Info("initialized", "type", PnlReportsQueue)
 
-	err = brokerConn.DeclareQueue("system-queue")
+	err = brokerConn.DeclareQueue(SystemQueue)
 	if err != nil {
-		logger.Error("initialization failed", "type", "system_queue", "error", err)
-		os.Exit(1)
+		logger.Error("initialization failed", "type", SystemQueue, "error", err)
+		return 1
 	}
-	logger.Info("initialized", "type", "system_queue")
+	logger.Info("initialized", "type", SystemQueue)
 
 	appl := app.NewApp(botAPI, cfg, client, brokerConn)
 
@@ -94,13 +107,15 @@ func main() {
 	case <-quit:
 		logger.Info("graceful shutdown")
 		cancel()
-		if err := <-done; err != nil && err != context.Canceled {
+		if err := <-done; err != nil && !errors.Is(err, context.Canceled) {
 			logger.Error("app exit error", "error", err)
 		}
+		return 0
 	case err := <-done:
 		if err != nil {
 			logger.Error("app failed", "error", err)
-			os.Exit(1)
+			return 1
 		}
+		return 0
 	}
 }
